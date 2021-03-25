@@ -1,20 +1,21 @@
 ---
-title: "Tidyverse Exercise"
+  title: "Tidyverse Exercise"
 author: ""
 date: "22/03/2021"
 output: html_document
 ---
-
-```{r setup, include=FALSE}
+  
+  ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Tidyverse
 
 - Load packages
-  - we need tidyverse
+- we need tidyverse
 
 ```{r}
+library(tidyverse)
 
 ```
 
@@ -25,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 We will read the file "data/covid_us_county.csv.gz"
 
 ```{r}
-data_covid <- NA
+data_covid <- read_csv("data/covid_us_county.csv.gz", guess_max = 1e5)
 
 ```
 
@@ -37,12 +38,14 @@ Now the data is in R workspace. Do the following
 ### Count the number of variabes and rows
 
 ```{r}
-
+dim(data_covid)
 ```
 
 ### Print out the first 6 rows of the data.frame
 
 ```{r}
+data_covid %>%
+  slice(1:6)
 
 ```
 
@@ -53,7 +56,14 @@ Now the data is in R workspace. Do the following
 
 
 ```{r}
+data_covid %>% 
+  group_by(state) %>%
+  summarise() %>%
+  count(state)
 
+data_covid %>% count(state)
+
+#58 rowcount
 ```
 
 
@@ -61,26 +71,64 @@ Now the data is in R workspace. Do the following
 
 ### Erase unnecessary rows
 
-First remove the non-country entries
+First remove the non-county entries
 
 ```{r}
+#check what the non state codes are. 
+table(data_covid$state_code, useNA = 'always')
+
+data_covid %>% 
+  filter(!is.na(fips))
 
 ```
 
 
 ### Create a subset dataset
 
-Find the latest date of the data, then subset the data with only the newest date for each country
+Find the latest date of the data, then subset the data with only the newest date for each county
 
 ```{r}
+#check the max date
+data_covid %>%
+  summarise( min = min(date),
+             max = max(date))
+
+#check if this is different for countries. 
+dates_country <- data_covid %>%
+  #remove the non-countries
+  filter(!is.na(county)) %>%
+  group_by(county) %>%
+  summarise( min = min(date),
+             max = max(date))
+
+#well there is only one date. Same for all. 
+table(dates_country$max)
+
+#let's subset on the last date. 
+date_covid_subset <- data_covid %>%
+  group_by(fips) %>%
+  filter(date == max(date)) %>%
+  ungroup()
 
 ```
 
 ### Max cases/deaths
 
 Which county has the highest number of cases/deaths? What is the number?
+  
+  ```{r}
+#max death
+date_covid_subset %>%
+  arrange(desc(deaths))
 
-```{r}
+#max cases
+date_covid_subset %>%
+  arrange(desc(cases))
+
+
+#max cases
+date_covid_subset %>%
+filter(deaths == max(deaths))
 
 ```
 
@@ -93,16 +141,24 @@ Which county has the highest number of cases/deaths? What is the number?
 Find the 10 counties with the earliest recorded cases/deaths.
 
 ```{r}
-
+data_covid %>%
+  group_by(fips) %>%
+  filter(cases > 0) %>%
+  filter(date == min(date)) %>%
+  ungroup() %>%
+  arrange(date) %>%
+  head(10)
 ```
 
 ### Aggregate the number of death
-
 For each state, calculate the total number of cases/deaths for each day (Hint: grouping and summarize)
 
 
 ```{r}
-
+data_covid %>%
+  group_by(state, date) %>%
+  summarise(sum(deaths), sum(cases)) %>%
+  arrange(desc(`sum(deaths)`))
 ```
 
 
@@ -119,20 +175,36 @@ Now let's visualize the outputs using ggplot
 
 ```{r}
 
+data_covid %>%
+  filter(!is.na(state)) %>%
+  group_by(date, state) %>%
+  summarise(tot_cases = sum(cases), tot_deaths = sum(deaths)) %>%
+  pivot_longer(cols = c(tot_cases, tot_deaths)) %>%
+  ggplot(aes(x = date, y = value, color = name)) +
+  facet_wrap(vars(state)) +
+  geom_line() +
+  theme_minimal() + 
+  theme(legend.position = 'bottom')
+
 ```
 
 
 ### Time series plot of total cases/deaths by the state
 
 ```{r}
-
+data_covid %>%
+  filter(!is.na(state)) %>%
+  group_by(state,date) %>%
+  summarise(cases = sum(cases)) %>%
+  ggplot(aes(x = date, y = cases, color = state)) +
+  geom_line()
 ```
 
 
 ### Daily increase trend
 
 How's the trend of the daily case increases. Which state look bad now?
-
-```{r}
+  
+  ```{r}
 
 ```
